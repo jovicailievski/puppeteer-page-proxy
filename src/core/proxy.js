@@ -38,6 +38,9 @@ const requestHandler = async (request, proxy, overrides = {}) => {
             body: response.body
         });
     } catch (error) {
+        //If the request is being handled by other handlers then do not abort
+        // Related to Issues #89
+        if (request.isInterceptResolutionHandled()) return;
         await request.abort();
     }
 };
@@ -76,6 +79,9 @@ const useProxyPer = {
 
     // Call this if page object passed
     CDPPage: async (page, proxy) => {
+        if (!page.eventsMap) {
+            page.eventsMap = new Map();
+        }
         await page.setRequestInterception(true);
         const listener = "$ppp_requestListener";
         removeRequestListener(page, listener);
@@ -87,8 +93,8 @@ const useProxyPer = {
     }
 }
 
-// Main function
 const useProxy = async (target, data) => {
+    if(target.constructor.name == "CdpPage") return useProxyPer.CDPPage(target, data);
     useProxyPer[target.constructor.name](target, data);
 };
 
